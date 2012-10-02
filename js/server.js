@@ -1,7 +1,12 @@
 var http = require('http'),
     url = require('url'),
     path = require('path'),
-    fs = require('fs');
+    util = require('util'),
+    fs = require('fs'),
+    mu = require('mu2');
+
+mu.root = process.cwd() + '/templates';
+
 
 var mimeTypes = {
     "html": "text/html",
@@ -9,24 +14,49 @@ var mimeTypes = {
     "jpg": "image/jpeg",
     "png": "image/png",
     "js": "text/javascript",
-    "css": "text/css"};
+    "css": "text/css"
+};
 
-http.createServer(function(req, res) {
-    var uri = url.parse(req.url).pathname;
-    var filename = path.join(process.cwd(), uri);
-    path.exists(filename, function(exists) {
-        if(!exists) {
-            console.log("not exists: " + filename);
-            res.writeHead(200, {'Content-Type': 'text/plain'});
-            res.write('404 Not Found\n');
-            res.end();
-            return;
-        }
-        var mimeType = mimeTypes[path.extname(filename).split(".")[1]];
-        res.writeHead(200, mimeType);
+http.createServer(function (req, res) {
+    "use strict";
 
-        var fileStream = fs.createReadStream(filename);
-        fileStream.pipe(res);
+    var uri = url.parse(req.url).pathname,
+        filename = path.join(process.cwd(), uri),
+        mimeType = mimeTypes[path.extname(filename).split(".")[1]];
 
-    }); //end path.exists
+    if(mimeType === "text/html") {
+        var template = uri.replace("/",""),
+            data = path.join(process.cwd(), "/data/" + template.replace(".html", ".json"));
+        fs.exists(data, function (exists) {
+            if (!exists) {
+                console.log("not exists: " + filename);
+                res.writeHead(200, {'Content-Type': 'text/plain'});
+                res.write('404 Not Found\n');
+                res.end();
+                return;
+            }
+
+            fs.readFile(data, function (err, data) {
+                var stream = mu.compileAndRender(uri.replace("/", ""), JSON.parse(data));
+                util.pump(stream, res);
+            });
+        });
+    } else {
+
+        fs.exists(filename, function (exists) {
+            if (!exists) {
+                console.log("not exists: " + filename);
+                res.writeHead(200, {'Content-Type': 'text/plain'});
+                res.write('404 Not Found\n');
+                res.end();
+                return;
+            }
+
+            res.writeHead(200, mimeType);
+
+            var fileStream = fs.createReadStream(filename);
+            fileStream.pipe(res);
+
+        }); //end path.exists
+    }
 }).listen(1337);

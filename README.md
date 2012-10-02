@@ -1,4 +1,4 @@
-Node-JSON-Mustache
-==================
+Demo-Boilerplate
+================
 
-Basic Node implementation to serve up the correct JSON and mustache combo
+Demo Boilerplate that gets pulled in by ST2 to keep things nice and consistent
